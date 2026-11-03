@@ -1,9 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube リアルタイムカウンター</title>
+
     <style>
         :root {
             --yt-red: #ff0000;
@@ -11,6 +13,11 @@
             --card-bg: #212121;
             --text-main: #f1f1f1;
             --text-sub: #aaa;
+            --border-color: #3d3d3d;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
@@ -33,7 +40,6 @@
             width: 100%;
             max-width: 500px;
             margin-bottom: 20px;
-            box-sizing: border-box;
         }
 
         .input-group {
@@ -49,13 +55,12 @@
 
         input {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background-color: #121212;
-            border: 1px solid #3d3d3d;
+            border: 1px solid var(--border-color);
             border-radius: 6px;
             color: var(--text-main);
             font-size: 1rem;
-            box-sizing: border-box;
         }
 
         input:focus {
@@ -64,7 +69,6 @@
         }
 
         .btn {
-            background-color: var(--yt-red);
             color: white;
             border: none;
             padding: 12px;
@@ -77,7 +81,16 @@
         }
 
         .btn:hover {
-            opacity: 0.9;
+            opacity: 0.85;
+        }
+
+        .start-btn {
+            background-color: var(--yt-red);
+        }
+
+        .stop-btn {
+            background-color: #555;
+            margin-top: 10px;
         }
 
         .counter-card {
@@ -87,9 +100,8 @@
             width: 100%;
             max-width: 500px;
             text-align: center;
-            box-sizing: border-box;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-            display: none; /* 最初は隠しておく */
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+            display: none;
         }
 
         .thumbnail {
@@ -105,7 +117,7 @@
             font-size: 1.3rem;
             font-weight: bold;
             margin-bottom: 8px;
-            color: var(--text-main);
+            overflow-wrap: anywhere;
         }
 
         .channel-title {
@@ -116,7 +128,6 @@
 
         .view-label {
             font-size: 0.85rem;
-            text-transform: uppercase;
             letter-spacing: 2px;
             color: var(--yt-red);
             font-weight: bold;
@@ -124,16 +135,18 @@
         }
 
         .view-count {
-            font-size: 3.5rem;
+            font-size: clamp(2rem, 10vw, 3.5rem);
             font-weight: bold;
-            font-family: 'Courier New', Courier, monospace; /* 数字の幅を一定にして見やすく */
+            font-family: "Courier New", Courier, monospace;
             letter-spacing: -1px;
             margin-bottom: 10px;
+            overflow-wrap: anywhere;
         }
 
         .status {
             font-size: 0.8rem;
             color: var(--text-sub);
+            line-height: 1.8;
         }
 
         .error {
@@ -141,112 +154,516 @@
             font-weight: bold;
             margin-top: 10px;
             text-align: center;
+            overflow-wrap: anywhere;
+        }
+
+        .note {
+            color: var(--text-sub);
+            font-size: 0.8rem;
+            line-height: 1.6;
+            margin-top: 15px;
         }
     </style>
 </head>
+
 <body>
 
     <!-- 設定エリア -->
     <div class="setup-box">
+
         <div class="input-group">
             <label for="api-key">YouTube Data API キー</label>
-            <input type="password" id="api-key" placeholder="AIzaSy...">
+            <input
+                type="password"
+                id="api-key"
+                placeholder="AIzaSy..."
+                autocomplete="off"
+            >
         </div>
+
         <div class="input-group">
             <label for="video-url">YouTubeの動画URL または 動画ID</label>
-            <input type="text" id="video-url" placeholder="https://youtube.com... または dQw4w9WgXcQ">
+            <input
+                type="text"
+                id="video-url"
+                placeholder="https://www.youtube.com/watch?v=..."
+            >
         </div>
-        <button class="btn" onclick="startCounter()">カウンターを起動する</button>
-        <div id="error-message" class="error"></div>
+
+        <button
+            type="button"
+            class="btn start-btn"
+            id="start-btn"
+            onclick="startCounter()"
+        >
+            カウンターを起動する
+        </button>
+
+        <button
+            type="button"
+            class="btn stop-btn"
+            onclick="stopCounter()"
+        >
+            カウンターを停止する
+        </button>
+
+        <div id="error-message" class="error" role="alert"></div>
+
+        <div class="note">
+            ※ 視聴回数はYouTube Data APIから取得します。<br>
+            ※ 更新間隔は10秒です。
+        </div>
+
     </div>
+
 
     <!-- カウンター表示エリア -->
     <div id="counter-card" class="counter-card">
-        <img id="video-thumb" class="thumbnail" src="" alt="Thumbnail" style="display:none;">
-        <div id="video-title" class="video-title">動画タイトル</div>
-        <div id="channel-title" class="channel-title">チャンネル名</div>
-        
-        <div class="view-label">Total Views</div>
-        <div id="view-count" class="view-count">0</div>
-        <div id="status" class="status">自動更新中 (10秒ごと)...</div>
+
+        <img
+            id="video-thumb"
+            class="thumbnail"
+            src=""
+            alt="動画サムネイル"
+            style="display:none;"
+        >
+
+        <div id="video-title" class="video-title">
+            動画タイトル
+        </div>
+
+        <div id="channel-title" class="channel-title">
+            チャンネル名
+        </div>
+
+        <div class="view-label">
+            TOTAL VIEWS
+        </div>
+
+        <div id="view-count" class="view-count">
+            0
+        </div>
+
+        <div id="status" class="status">
+            待機中
+        </div>
+
     </div>
 
+
     <script>
+
+        // タイマー管理用
         let timer = null;
 
-        // URLから動画IDを抽出する関数
+        // 通信中かどうかを管理する
+        let isFetching = false;
+
+        // 動画IDを保存する
+        let currentVideoId = null;
+
+
+        // ========================================
+        // 動画IDを抽出する関数
+        // ========================================
+
         function extractVideoId(input) {
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = input.match(regExp);
-            return (match && match[2].length === 11) ? match[2] : input.trim();
-        }
 
-        async function fetchStats() {
-            const apiKey = document.getElementById('api-key').value.trim();
-            const videoInput = document.getElementById('video-url').value.trim();
-            const errorDiv = document.getElementById('error-message');
-            
-            if (!apiKey) {
-                errorDiv.innerText = "APIキーを入力してください。";
-                return;
-            }
-            if (!videoInput) {
-                errorDiv.innerText = "動画URLまたはIDを入力してください。";
-                return;
-            }
+            const value = input.trim();
 
-            errorDiv.innerText = "";
-            const videoId = extractVideoId(videoInput);
-            const url = `https://googleapis.com{videoId}&key=${apiKey}`;
+            // 動画IDを直接入力した場合
+            if (/^[a-zA-Z0-9_-]{11}$/.test(value)) {
+                return value;
+            }
 
             try {
-                const response = await fetch(url);
+
+                // URLの形式を確認する
+                const url = new URL(
+                    value.includes("://") ? value : "https://" + value
+                );
+
+                const host = url.hostname.toLowerCase();
+
+                let videoId = null;
+
+                // youtu.be形式
+                if (host === "youtu.be") {
+
+                    videoId = url.pathname.split("/").filter(Boolean)[0];
+
+                }
+
+                // YouTube形式
+                else if (
+                    host === "youtube.com" ||
+                    host.endsWith(".youtube.com")
+                ) {
+
+                    // 通常の動画URL
+                    if (url.pathname === "/watch") {
+
+                        videoId = url.searchParams.get("v");
+
+                    }
+
+                    // Shorts・埋め込み・ライブ配信
+                    else if (
+                        /^\/(shorts|embed|live|v)\//.test(url.pathname)
+                    ) {
+
+                        videoId = url.pathname.split("/")[2];
+
+                    }
+
+                }
+
+                // 動画IDの形式を検証する
+                if (
+                    videoId &&
+                    /^[a-zA-Z0-9_-]{11}$/.test(videoId)
+                ) {
+
+                    return videoId;
+
+                }
+
+                return null;
+
+            } catch (error) {
+
+                return null;
+
+            }
+
+        }
+
+
+        // ========================================
+        // YouTube APIから動画情報を取得する関数
+        // ========================================
+
+        async function fetchStats() {
+
+            // すでに通信中なら重複実行しない
+            if (isFetching) {
+                return;
+            }
+
+            const apiKey = document
+                .getElementById("api-key")
+                .value
+                .trim();
+
+            const videoInput = document
+                .getElementById("video-url")
+                .value
+                .trim();
+
+            const errorDiv = document.getElementById("error-message");
+
+            const statusDiv = document.getElementById("status");
+
+
+            // APIキーの入力チェック
+            if (!apiKey) {
+
+                errorDiv.innerText = "APIキーを入力してください。";
+
+                stopCounter();
+
+                return;
+
+            }
+
+
+            // 動画URLの入力チェック
+            if (!videoInput) {
+
+                errorDiv.innerText = "動画URLまたはIDを入力してください。";
+
+                stopCounter();
+
+                return;
+
+            }
+
+
+            // 動画IDを取得する
+            const videoId = extractVideoId(videoInput);
+
+
+            // 動画IDのチェック
+            if (!videoId) {
+
+                errorDiv.innerText =
+                    "動画IDが正しくありません。URLまたはIDを確認してください。";
+
+                stopCounter();
+
+                return;
+
+            }
+
+
+            // 通信開始
+            isFetching = true;
+
+            errorDiv.innerText = "";
+
+            statusDiv.innerText = "データを取得しています...";
+
+
+            try {
+
+                // APIのURLを作成する
+                const params = new URLSearchParams({
+
+                    part: "snippet,statistics",
+
+                    id: videoId,
+
+                    key: apiKey
+
+                });
+
+                const apiUrl =
+                    `https://www.googleapis.com/youtube/v3/videos?${params}`;
+
+
+                // APIにリクエストを送信する
+                const response = await fetch(apiUrl);
+
+
+                // JSON形式でデータを取得する
                 const data = await response.json();
 
-                if (data.error) {
-                    errorDiv.innerText = `APIエラー: ${data.error.message}`;
-                    clearInterval(timer);
-                    return;
+
+                // HTTPエラーの確認
+                if (!response.ok) {
+
+                    const message =
+                        data.error?.message ||
+                        `HTTPエラー: ${response.status}`;
+
+                    throw new Error(message);
+
                 }
 
-                if (data.items && data.items.length > 0) {
-                    const video = data.items[0];
-                    
-                    // 画面の更新
-                    document.getElementById('video-title').innerText = video.snippet.title;
-                    document.getElementById('channel-title').innerText = video.snippet.channelTitle;
-                    
-                    // 視聴回数をカンマ区切りに
-                    const views = parseInt(video.statistics.viewCount).toLocaleString();
-                    document.getElementById('view-count').innerText = views;
 
-                    // サムネイルの表示
-                    const thumbImg = document.getElementById('video-thumb');
-                    thumbImg.src = video.snippet.thumbnails.default.url;
+                // APIエラーの確認
+                if (data.error) {
+
+                    throw new Error(data.error.message);
+
+                }
+
+
+                // 動画が存在するか確認
+                if (!data.items || data.items.length === 0) {
+
+                    throw new Error(
+                        "動画が見つかりませんでした。動画IDや公開状態を確認してください。"
+                    );
+
+                }
+
+
+                // 動画情報を取得する
+                const video = data.items[0];
+
+
+                // 必要な情報が存在するか確認
+                if (!video.snippet || !video.statistics) {
+
+                    throw new Error(
+                        "動画情報を正しく取得できませんでした。"
+                    );
+
+                }
+
+
+                // ========================================
+                // 動画タイトルを表示
+                // ========================================
+
+                document.getElementById("video-title").innerText =
+                    video.snippet.title;
+
+
+                // ========================================
+                // チャンネル名を表示
+                // ========================================
+
+                document.getElementById("channel-title").innerText =
+                    video.snippet.channelTitle;
+
+
+                // ========================================
+                // 視聴回数を表示
+                // ========================================
+
+                const viewCount = Number(
+                    video.statistics.viewCount
+                );
+
+                if (!Number.isSafeInteger(viewCount)) {
+
+                    throw new Error(
+                        "視聴回数を正しく取得できませんでした。"
+                    );
+
+                }
+
+                document.getElementById("view-count").innerText =
+                    viewCount.toLocaleString("ja-JP");
+
+
+                // ========================================
+                // サムネイルを表示
+                // ========================================
+
+                const thumbImg =
+                    document.getElementById("video-thumb");
+
+                const thumbnails = video.snippet.thumbnails;
+
+                const thumbnail =
+                    thumbnails.high ||
+                    thumbnails.medium ||
+                    thumbnails.default;
+
+                if (thumbnail?.url) {
+
+                    thumbImg.onerror = function () {
+
+                        this.style.display = "none";
+
+                    };
+
+                    thumbImg.src = thumbnail.url;
+
                     thumbImg.style.display = "inline-block";
 
-                    // カウンターカードを表示
-                    document.getElementById('counter-card').style.display = "block";
                 } else {
-                    errorDiv.innerText = "動画が見つかりませんでした。IDを確認してください。";
-                    clearInterval(timer);
+
+                    thumbImg.style.display = "none";
+
                 }
+
+
+                // ========================================
+                // カウンターカードを表示
+                // ========================================
+
+                document.getElementById("counter-card")
+                    .style.display = "block";
+
+
+                // 最終更新時刻
+                const now = new Date();
+
+                const time = now.toLocaleTimeString("ja-JP");
+
+                statusDiv.innerText =
+                    `自動更新中（10秒ごと）\n最終更新：${time}`;
+
+
+                // 現在の動画IDを保存
+                currentVideoId = videoId;
+
+
             } catch (error) {
-                errorDiv.innerText = "通信エラーが発生しました。";
-                clearInterval(timer);
+
+                // エラーを表示
+                errorDiv.innerText =
+                    `エラー：${error.message}`;
+
+                statusDiv.innerText =
+                    "更新を停止しました。";
+
+
+                // エラーが発生したらタイマーを停止
+                stopCounter(false);
+
+
+            } finally {
+
+                // 通信終了
+                isFetching = false;
+
             }
+
         }
 
+
+        // ========================================
+        // カウンターを起動する関数
+        // ========================================
+
         function startCounter() {
-            // すでにタイマーが動いていたら一回消す
-            if (timer) clearInterval(timer);
-            
-            // 初回実行
+
+            // 以前のタイマーを停止する
+            if (timer !== null) {
+
+                clearInterval(timer);
+
+                timer = null;
+
+            }
+
+
+            // エラー表示を消す
+            document.getElementById("error-message").innerText = "";
+
+
+            // 前回の情報を整理する
+            document.getElementById("counter-card")
+                .style.display = "none";
+
+
+            // 動画情報を取得する
             fetchStats();
-            
-            // 10秒ごとに自動でAPIを叩いて更新する
-            timer = setInterval(fetchStats, 10000);
+
+
+            // 10秒ごとに更新する
+            timer = setInterval(function () {
+
+                fetchStats();
+
+            }, 10000);
+
         }
+
+
+        // ========================================
+        // カウンターを停止する関数
+        // ========================================
+
+        function stopCounter(updateStatus = true) {
+
+            // タイマーが存在する場合
+            if (timer !== null) {
+
+                clearInterval(timer);
+
+                timer = null;
+
+            }
+
+
+            // 停止状態を表示する
+            if (updateStatus) {
+
+                document.getElementById("status").innerText =
+                    "カウンターは停止しています。";
+
+            }
+
+        }
+
+
     </script>
+
 </body>
 </html>
