@@ -566,7 +566,7 @@
                 const time = now.toLocaleTimeString("ja-JP");
 
                 statusDiv.innerText =
-                    `自動更新中（10秒ごと）\n最終更新：${time}`;
+                    `自動更新中（5秒ごと）\n最終更新：${time}`;
 
 
                 // 現在の動画IDを保存
@@ -626,12 +626,12 @@
             fetchStats();
 
 
-            // 10秒ごとに更新する
+            // 5秒ごとに更新する
             timer = setInterval(function () {
 
                 fetchStats();
 
-            }, 10000);
+            }, 5000);
 
         }
 
