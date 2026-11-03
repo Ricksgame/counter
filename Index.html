@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube視聴回数チェッカー</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #ff0000;
+            margin-bottom: 30px;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .video-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .view-count {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #222;
+            margin-bottom: 20px;
+        }
+        .view-count span {
+            font-size: 1rem;
+            color: #666;
+            margin-left: 5px;
+        }
+        .btn {
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background-color: #cc0000;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📺 YouTube View Counter</h1>
+
+    <div class="container">
+        <div id="video-title" class="video-title">動画情報を読み込み中...</div>
+        <div id="view-count" class="view-count">- <span>回</span></div>
+        <button class="btn" onclick="fetchYouTubeViews()">最新の情報に更新</button>
+    </div>
+
+    <script>
+        // ================= ユーザー設定 =================
+        const API_KEY = 'AIzaSyBSxj7r4kZOPetEge6SQZtva7UGG_YWNF4'; 
+        const VIDEO_ID = 'SX_ViT4Ra7k'; // 調べたい動画のID（URLの「v=」の後ろの文字列）
+        // ===============================================
+
+        async function fetchYouTubeViews() {
+            if (API_KEY === 'AIzaSyBSxj7r4kZOPetEge6SQZtva7UGG_YWNF4') {
+                document.getElementById('video-title').innerHTML = '<span class="error">エラー: APIキーを設定してください</span>';
+                return;
+            }
+
+            const url = `https://googleapis.com{VIDEO_ID}&key=${API_KEY}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.items && data.items.length > 0) {
+                    const video = data.items[0];
+                    const title = video.snippet.title;
+                    // 視聴回数をカンマ区切りの見やすい形式に変換
+                    const viewCount = parseInt(video.statistics.viewCount).toLocaleString();
+
+                    // 画面の文字を書き換え
+                    document.getElementById('video-title').innerText = title;
+                    document.getElementById('view-count').innerHTML = `${viewCount} <span>回</span>`;
+                } else {
+                    document.getElementById('video-title').innerHTML = '<span class="error">動画が見つかりませんでした。IDを確認してください。</span>';
+                }
+            } catch (error) {
+                console.error('エラーが発生しました:', error);
+                document.getElementById('video-title').innerHTML = '<span class="error">データの取得に失敗しました。</span>';
+            }
+        }
+
+        // ページを開いたときに自動で一度実行する
+        window.onload = fetchYouTubeViews;
+    </script>
+</body>
+</html>
