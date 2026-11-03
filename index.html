@@ -3,114 +3,250 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube視聴回数チェッカー</title>
+    <title>YouTube リアルタイムカウンター</title>
     <style>
+        :root {
+            --yt-red: #ff0000;
+            --bg-color: #0f0f0f;
+            --card-bg: #212121;
+            --text-main: #f1f1f1;
+            --text-sub: #aaa;
+        }
+
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: #f9f9f9;
+            font-family: "YouTube Sans", "Roboto", "Arial", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             margin: 0;
-            padding: 40px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
+            min-height: 100vh;
         }
-        h1 {
-            color: #ff0000;
-            margin-bottom: 30px;
-        }
-        .container {
-            background: white;
-            padding: 30px;
+
+        .setup-box {
+            background-color: var(--card-bg);
+            padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            max-width: 500px;
             width: 100%;
-            text-align: center;
-        }
-        .video-title {
-            font-size: 1.2rem;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #333;
-        }
-        .view-count {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: #222;
+            max-width: 500px;
             margin-bottom: 20px;
+            box-sizing: border-box;
         }
-        .view-count span {
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            margin-bottom: 5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            background-color: #121212;
+            border: 1px solid #3d3d3d;
+            border-radius: 6px;
+            color: var(--text-main);
             font-size: 1rem;
-            color: #666;
-            margin-left: 5px;
+            box-sizing: border-box;
         }
+
+        input:focus {
+            outline: none;
+            border-color: var(--yt-red);
+        }
+
         .btn {
-            background-color: #ff0000;
+            background-color: var(--yt-red);
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 12px;
+            width: 100%;
             font-size: 1rem;
+            font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: opacity 0.2s;
         }
+
         .btn:hover {
-            background-color: #cc0000;
+            opacity: 0.9;
         }
-        .error {
-            color: red;
+
+        .counter-card {
+            background-color: var(--card-bg);
+            padding: 40px 20px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            box-sizing: border-box;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            display: none; /* 最初は隠しておく */
+        }
+
+        .thumbnail {
+            width: 120px;
+            height: 120px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            border: 3px solid var(--yt-red);
+        }
+
+        .video-title {
+            font-size: 1.3rem;
             font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        .channel-title {
+            font-size: 1rem;
+            color: var(--text-sub);
+            margin-bottom: 25px;
+        }
+
+        .view-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--yt-red);
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .view-count {
+            font-size: 3.5rem;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace; /* 数字の幅を一定にして見やすく */
+            letter-spacing: -1px;
+            margin-bottom: 10px;
+        }
+
+        .status {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+        }
+
+        .error {
+            color: var(--yt-red);
+            font-weight: bold;
+            margin-top: 10px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <h1>📺 YouTube View Counter</h1>
+    <!-- 設定エリア -->
+    <div class="setup-box">
+        <div class="input-group">
+            <label for="api-key">YouTube Data API キー</label>
+            <input type="password" id="api-key" placeholder="AIzaSy...">
+        </div>
+        <div class="input-group">
+            <label for="video-url">YouTubeの動画URL または 動画ID</label>
+            <input type="text" id="video-url" placeholder="https://youtube.com... または dQw4w9WgXcQ">
+        </div>
+        <button class="btn" onclick="startCounter()">カウンターを起動する</button>
+        <div id="error-message" class="error"></div>
+    </div>
 
-    <div class="container">
-        <div id="video-title" class="video-title">動画情報を読み込み中...</div>
-        <div id="view-count" class="view-count">- <span>回</span></div>
-        <button class="btn" onclick="fetchYouTubeViews()">最新の情報に更新</button>
+    <!-- カウンター表示エリア -->
+    <div id="counter-card" class="counter-card">
+        <img id="video-thumb" class="thumbnail" src="" alt="Thumbnail" style="display:none;">
+        <div id="video-title" class="video-title">動画タイトル</div>
+        <div id="channel-title" class="channel-title">チャンネル名</div>
+        
+        <div class="view-label">Total Views</div>
+        <div id="view-count" class="view-count">0</div>
+        <div id="status" class="status">自動更新中 (10秒ごと)...</div>
     </div>
 
     <script>
-        // ================= ユーザー設定 =================
-        const API_KEY = 'AIzaSyBSxj7r4kZOPetEge6SQZtva7UGG_YWNF4'; 
-        const VIDEO_ID = 'SX_ViT4Ra7k'; // 調べたい動画のID（URLの「v=」の後ろの文字列）
-        // ===============================================
+        let timer = null;
 
-        async function fetchYouTubeViews() {
-            if (API_KEY === 'AIzaSyBSxj7r4kZOPetEge6SQZtva7UGG_YWNF4') {
-                document.getElementById('video-title').innerHTML = '<span class="error">エラー: APIキーを設定してください</span>';
+        // URLから動画IDを抽出する関数
+        function extractVideoId(input) {
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = input.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : input.trim();
+        }
+
+        async function fetchStats() {
+            const apiKey = document.getElementById('api-key').value.trim();
+            const videoInput = document.getElementById('video-url').value.trim();
+            const errorDiv = document.getElementById('error-message');
+            
+            if (!apiKey) {
+                errorDiv.innerText = "APIキーを入力してください。";
+                return;
+            }
+            if (!videoInput) {
+                errorDiv.innerText = "動画URLまたはIDを入力してください。";
                 return;
             }
 
-            const url = `https://googleapis.com{VIDEO_ID}&key=${API_KEY}`;
+            errorDiv.innerText = "";
+            const videoId = extractVideoId(videoInput);
+            const url = `https://googleapis.com{videoId}&key=${apiKey}`;
 
             try {
                 const response = await fetch(url);
                 const data = await response.json();
 
+                if (data.error) {
+                    errorDiv.innerText = `APIエラー: ${data.error.message}`;
+                    clearInterval(timer);
+                    return;
+                }
+
                 if (data.items && data.items.length > 0) {
                     const video = data.items[0];
-                    const title = video.snippet.title;
-                    // 視聴回数をカンマ区切りの見やすい形式に変換
-                    const viewCount = parseInt(video.statistics.viewCount).toLocaleString();
+                    
+                    // 画面の更新
+                    document.getElementById('video-title').innerText = video.snippet.title;
+                    document.getElementById('channel-title').innerText = video.snippet.channelTitle;
+                    
+                    // 視聴回数をカンマ区切りに
+                    const views = parseInt(video.statistics.viewCount).toLocaleString();
+                    document.getElementById('view-count').innerText = views;
 
-                    // 画面の文字を書き換え
-                    document.getElementById('video-title').innerText = title;
-                    document.getElementById('view-count').innerHTML = `${viewCount} <span>回</span>`;
+                    // サムネイルの表示
+                    const thumbImg = document.getElementById('video-thumb');
+                    thumbImg.src = video.snippet.thumbnails.default.url;
+                    thumbImg.style.display = "inline-block";
+
+                    // カウンターカードを表示
+                    document.getElementById('counter-card').style.display = "block";
                 } else {
-                    document.getElementById('video-title').innerHTML = '<span class="error">動画が見つかりませんでした。IDを確認してください。</span>';
+                    errorDiv.innerText = "動画が見つかりませんでした。IDを確認してください。";
+                    clearInterval(timer);
                 }
             } catch (error) {
-                console.error('エラーが発生しました:', error);
-                document.getElementById('video-title').innerHTML = '<span class="error">データの取得に失敗しました。</span>';
+                errorDiv.innerText = "通信エラーが発生しました。";
+                clearInterval(timer);
             }
         }
 
-        // ページを開いたときに自動で一度実行する
-        window.onload = fetchYouTubeViews;
+        function startCounter() {
+            // すでにタイマーが動いていたら一回消す
+            if (timer) clearInterval(timer);
+            
+            // 初回実行
+            fetchStats();
+            
+            // 10秒ごとに自動でAPIを叩いて更新する
+            timer = setInterval(fetchStats, 10000);
+        }
     </script>
 </body>
 </html>
